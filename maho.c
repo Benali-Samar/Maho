@@ -3,20 +3,35 @@
 #include <unistd.h>
 #include <termios.h> //The termios functions describe a general terminal interface that is provided to control asynchronous communications ports.
 #include <ctype.h> // To control the printable characters
+#include <errno.h>
 
 struct termios orig_termios;
+
+// Some error handling stuff ...
+void die(const char *s)
+{
+  // if anything went wrong error and run (exit).
+  perror (s);
+  exit(1);
+}
+
+
 // Disable the raw mode when finishing writing else it will not exit the section
 void disableRawMode(){
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1)
+    die("tcsetarr");
 }
 // enabling raw mode that can display characters directly while writing, oppositely to canonical mode that waits for a specified  signal to print all typed characters. 
 // Canonical mode is the default so we should enable the raw mode instead.
 void enableRawMode()
 {
-  
-  tcgetattr(STDIN_FILENO, &orig_termios); // to read the current attributes into a struct
+  // read the current attributes into a struct
+  if (tcgetattr(STDIN_FILENO, &orig_termios) == -1)
+    die ("tcsetattr");
+
   atexit(disableRawMode) ; // after read disable and comback to canonical mode for signals use
   
+
   struct termios raw = orig_termios;
   raw.c_iflag &= ~(ICRNL | IXON | BRKINT | INPCK | ISTRIP);  // disable CTRL+S and CTRL+Q and miscellaneous flags
   raw.c_oflag &= ~(OPOST); // disable all output processing like "\n"
@@ -27,8 +42,10 @@ void enableRawMode()
   raw.c_cc[VMIN] = 0; 
   //  Set the max amount of time to wait before read() returns.
   raw.c_cc [VTIME] = 1;
-
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw); // to write the new terminal attributes back out
+  
+  // To write the new terminal attriobutes back out
+  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1)
+    die ("tcsetattr");
 
 }
 
@@ -43,7 +60,8 @@ int main ()
   while(1) {
     
     // Reading ... 
-    read(STDIN_FILENO, &c, 1);
+    if (read(STDIN_FILENO, &c, 1)== -1 && errno != EAGAIN)
+      die ("read");
     // does c a controle character ?
     if (iscntrl(c))  
     { 
