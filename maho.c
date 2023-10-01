@@ -20,7 +20,12 @@
 
 /***** Data *****/
 
-struct termios orig_termios;
+// For the terminal size rows 
+struct editorConfig {
+  struct termios orig_termios;
+};
+
+struct editorConfig E;
 
 
 
@@ -41,7 +46,7 @@ void die(const char *s)
 
 // Disable the raw mode when finishing writing else it will not exit the section
 void disableRawMode(){
-  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1)
+  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.orig_termios) == -1)
     die("tcsetarr");
 }
 
@@ -51,13 +56,13 @@ void disableRawMode(){
 void enableRawMode()
 {
   // read the current attributes into a struct
-  if (tcgetattr(STDIN_FILENO, &orig_termios) == -1)
+  if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1)
     die ("tcsetattr");
 
   atexit(disableRawMode) ; // after read disable and comback to canonical mode for signals use
   
 
-  struct termios raw = orig_termios;
+  struct termios raw = E.orig_termios;
   raw.c_iflag &= ~(ICRNL | IXON | BRKINT | INPCK | ISTRIP);  // disable CTRL+S and CTRL+Q and miscellaneous flags
   raw.c_oflag &= ~(OPOST); // disable all output processing like "\n"
   raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG); // modifying the struct by hand 
@@ -114,6 +119,16 @@ void editorProcessKeypress(char c)
 /***** Outputs *****/ 
 
 
+//Adding tilde like VIM did ^^ 
+void editorDrawRows()
+{
+  int i;
+  for (i = 0; i < 24; i++)
+  {
+    write(STDOUT_FILENO, "~\r\n", 3);
+  }
+}
+
 
 //clearing the screen
 void editorRefreshscreen()
@@ -122,6 +137,9 @@ void editorRefreshscreen()
   // The J command is to clear the screen, the 2 is to say clear the entire screen
   write(STDOUT_FILENO, "\x1b[2J", 4);
   // The H command for the cursor position
+  write (STDOUT_FILENO, "\x1b[H", 3);
+  editorDrawRows();
+
   write (STDOUT_FILENO, "\x1b[H", 3);
 }
 
