@@ -7,6 +7,7 @@
 #include <termios.h> //The termios functions describe a general terminal interface that is provided to control asynchronous communications ports.
 #include <ctype.h> // To control the printable characters
 #include <errno.h>
+#include <sys/ioctl.h> // for the window size
 
 
 
@@ -22,6 +23,9 @@
 
 // For the terminal size rows 
 struct editorConfig {
+  //for screen size ioctl request
+  int screenrows;
+  int screencols;
   struct termios orig_termios;
 };
 
@@ -94,7 +98,21 @@ char editorReadKey()
   return c;
 }
 
+//Get window size with IOCTL built in request: TIOCGWINSZ 
+// Stands for Input/Output Control Get WINdow size
 
+int getWindowSize(int *rows, int *cols)
+{
+  struct winsize ws;
+  if(ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws)== -1 || ws.ws_col == 0)
+  {
+    return -1;
+  }else{
+    *cols = ws.ws_col;
+    *rows = ws.ws_row;
+    return 0;
+  }
+}
 
 /***** Inputs *****/ 
 
@@ -123,9 +141,13 @@ void editorProcessKeypress(char c)
 void editorDrawRows()
 {
   int i;
-  for (i = 0; i < 24; i++)
+  for (i = 0; i < E.screenrows; i++)
   {
     write(STDOUT_FILENO, "~\r\n", 3);
+    
+    //Last line
+    if(i <E.screenrows -1)
+      write(STDOUT_FILENO, "\r\n", 2);
   }
 }
 
@@ -148,11 +170,18 @@ void editorRefreshscreen()
 
 /***** Init *****/
 
+
+void initEditor()
+{
+  if(getWindowSize(&E.screenrows, &E.screencols) == -1)
+    die("getWindowSize");
+}
+
 int main ()
 {
   // All the stuff did upside
   enableRawMode();
-  
+  initEditor();
   //Reading chars 
   while(1) {
   	char c = editorReadKey();
