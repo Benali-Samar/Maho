@@ -1,3 +1,6 @@
+/***** Includes *****/
+
+
 #include <stdio.h>
 #include <stdlib.h> 
 #include <unistd.h>
@@ -5,7 +8,13 @@
 #include <ctype.h> // To control the printable characters
 #include <errno.h>
 
+
+
+/***** Data *****/
+
 struct termios orig_termios;
+
+/***** Terminal *****/
 
 // Some error handling stuff ...
 void die(const char *s)
@@ -49,6 +58,10 @@ void enableRawMode()
 
 }
 
+
+
+
+/***** Init *****/
 
 int main ()
 {
