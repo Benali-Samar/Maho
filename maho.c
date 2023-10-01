@@ -22,11 +22,17 @@
 
 struct termios orig_termios;
 
+
+
 /***** Terminal *****/
 
 // Some error handling stuff ...
 void die(const char *s)
 {
+  // clear the screen when exit
+  write (STDOUT_FILENO, "\x1b[2J", 4);
+  write(STDOUT_FILENO, "\x1b[H", 3);
+
   // if anything went wrong error and run (exit).
   perror (s);
   exit(1);
@@ -38,6 +44,8 @@ void disableRawMode(){
   if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1)
     die("tcsetarr");
 }
+
+
 // enabling raw mode that can display characters directly while writing, oppositely to canonical mode that waits for a specified  signal to print all typed characters. 
 // Canonical mode is the default so we should enable the raw mode instead.
 void enableRawMode()
@@ -68,6 +76,57 @@ void enableRawMode()
 
 
 
+//Reading keypress in lowleveel
+char editorReadKey()
+{
+  int nread;
+  char c;
+  while((nread = read(STDIN_FILENO, &c, 1)) != 1)
+  {
+    if (nread == -1 && errno != EAGAIN)
+      die("read");
+  }
+  return c;
+}
+
+
+
+/***** Inputs *****/ 
+
+
+//Mapping the keypress to editor operations
+void editorProcessKeypress(char c)
+{
+  //char c = editorReadKey();
+
+  switch(c) 
+  {
+    case CTRL_KEY('q'):
+      write(STDOUT_FILENO, "\x1b[2J", 4);
+      write(STDOUT_FILENO, "\x1b[H" , 3);
+      exit(0);
+      break;
+  }
+}
+
+
+
+/***** Outputs *****/ 
+
+
+
+//clearing the screen
+void editorRefreshscreen()
+{
+  // The \x1b is the escape character
+  // The J command is to clear the screen, the 2 is to say clear the entire screen
+  write(STDOUT_FILENO, "\x1b[2J", 4);
+  // The H command for the cursor position
+  write (STDOUT_FILENO, "\x1b[H", 3);
+}
+
+
+
 
 /***** Init *****/
 
@@ -75,25 +134,23 @@ int main ()
 {
   // All the stuff did upside
   enableRawMode();
-
-  // infinit loop till the user type 'q'
-  char c = '\0';
+  
+  //Reading chars 
   while(1) {
-    
-    // Reading ... 
-    if (read(STDIN_FILENO, &c, 1)== -1 && errno != EAGAIN)
-      die ("read");
-    // does c a controle character ?
-    if (iscntrl(c))  
-    { 
-      // print it 
-      printf("%d\n", c);
-    }else {
-      //else to go back in a new line write the whole "\r\n"
-      printf("%d ('%c')\r\n", c, c);
-    }
-    if (c == CTRL_KEY('q'))
-      break;  
+  	char c = editorReadKey();
+    // does c a control character ?
+        if (iscntrl(c)) { 
+            // print it 
+            printf("%d\n", c);
+        } else {
+            // else to go back in a new line write the whole "\r\n"
+            printf("%d ('%c')\r\n", c, c);
+        }
+
+    //Process the characters	  
+    editorProcessKeypress(c);
+    //Flush the screen
+    editorRefreshscreen(); 
   }
   return 0;
 }
