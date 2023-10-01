@@ -10,6 +10,14 @@
 
 
 
+/***** Defines *****/ 
+
+
+// To define the qtrl Q as a quit 
+#define CTRL_KEY(k) ((k) & 0x1f)
+
+
+
 /***** Data *****/
 
 struct termios orig_termios;
@@ -84,7 +92,7 @@ int main ()
       //else to go back in a new line write the whole "\r\n"
       printf("%d ('%c')\r\n", c, c);
     }
-    if (c == 'q')
+    if (c == CTRL_KEY('q'))
       break;  
   }
   return 0;
