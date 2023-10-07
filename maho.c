@@ -207,6 +207,8 @@ void editorDrawRows(struct abuf *ab)
     abAppend(ab ,"~",1);
   
     //Last line
+    //K to erase the rest of the current line not all the screen
+    abAppend(ab,"\x1b[k",3);
     if(i <E.screenrows -1)
       abAppend(ab,"\r\n",2);
   }
