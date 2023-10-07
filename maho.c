@@ -8,6 +8,7 @@
 #include <ctype.h> // To control the printable characters
 #include <errno.h>
 #include <sys/ioctl.h> // for the window size
+#include <string.h> 
 
 
 
@@ -16,7 +17,7 @@
 
 // To define the qtrl Q as a quit 
 #define CTRL_KEY(k) ((k) & 0x1f)
-
+#define ABUF_INIT {NULL,0}
 
 
 /***** Data *****/
@@ -30,6 +31,12 @@ struct editorConfig {
 };
 
 struct editorConfig E;
+
+struct abuf {
+  char *b;
+  int len;
+};
+
 
 
 
@@ -147,6 +154,27 @@ int getWindowSize(int *rows, int *cols)
   }
 }
 
+
+
+/***** Append buffer *****/ 
+
+// For reallocating the memory block to the size of the current string and to copy it after the end of the current data in the buffer,later update the length and and the pointer of abuf with the new values
+void abAppend(struct abuf *ab,const char *s,int len)
+{
+  char *new = realloc(ab ->b ,ab -> len + len);
+
+  if (new == NULL) return ;
+  memcpy(&new[ab ->len],s ,len);
+  ab -> b = new;
+  ab ->len += len;
+}
+
+void abFree(struct abuf *ab)
+{
+  free (ab ->b );
+}
+
+
 /***** Inputs *****/ 
 
 
@@ -171,16 +199,16 @@ void editorProcessKeypress(char c)
 
 
 //Adding tilde like VIM did ^^ 
-void editorDrawRows()
+void editorDrawRows(struct abuf *ab)
 {
   int i;
   for (i = 0; i < E.screenrows; i++)
   {
-    write(STDOUT_FILENO, "~", 1);
+    abAppend(ab ,"~",1);
   
     //Last line
     if(i <E.screenrows -1)
-      write(STDOUT_FILENO, "\r\n", 2);
+      abAppend(ab,"\r\n",2);
   }
 }
 
@@ -188,14 +216,21 @@ void editorDrawRows()
 //clearing the screen
 void editorRefreshscreen()
 {
+  struct abuf ab = ABUF_INIT;
   // The \x1b is the escape character
   // The J command is to clear the screen, the 2 is to say clear the entire screen
-  write(STDOUT_FILENO, "\x1b[2J", 4);
+  abAppend(&ab ,"\x1b[?25l",6);
+  
   // The H command for the cursor position
-  write (STDOUT_FILENO, "\x1b[H", 3);
-  editorDrawRows();
+  abAppend( &ab,"\x1b[H", 3);
+  editorDrawRows(&ab);
 
-  write (STDOUT_FILENO, "\x1b[H", 3);
+  abAppend( &ab, " \x1b[H", 3);
+  abAppend(&ab,"\x1b[?25h",6);
+
+  //write the buffer's contents out to standard output
+  write (STDOUT_FILENO,ab.b ,ab.len);
+  abFree(&ab);
 }
 
 
