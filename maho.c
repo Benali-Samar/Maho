@@ -176,8 +176,8 @@ void editorDrawRows()
   int i;
   for (i = 0; i < E.screenrows; i++)
   {
-    write(STDOUT_FILENO, "~\r\n", 3);
-    
+    write(STDOUT_FILENO, "~", 1);
+  
     //Last line
     if(i <E.screenrows -1)
       write(STDOUT_FILENO, "\r\n", 2);
