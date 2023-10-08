@@ -18,6 +18,7 @@
 // To define the qtrl Q as a quit 
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define ABUF_INIT {NULL,0}
+#define MAHO_VERSION "0.0.1"
 
 
 /***** Data *****/
@@ -25,6 +26,7 @@
 // For the terminal size rows 
 struct editorConfig {
   //for screen size ioctl request
+  int cx,cy;
   int screenrows;
   int screencols;
   struct termios orig_termios;
@@ -177,11 +179,29 @@ void abFree(struct abuf *ab)
 
 /***** Inputs *****/ 
 
+//Cursor moves 
+void editorMoveCursor(char key)
+{
+  switch(key){
+    case'a':
+      E.cx--;
+      break;
+    case 'd':
+      E.cx++;
+      break;
+    case'w':
+      E.cy--;
+      break;
+    case 's':
+      E.cy++;
+      break;
+  }
+}
 
 //Mapping the keypress to editor operations
-void editorProcessKeypress(char c)
+void editorProcessKeypress()
 {
-  //char c = editorReadKey();
+  char c = editorReadKey();
 
   switch(c) 
   {
@@ -190,8 +210,15 @@ void editorProcessKeypress(char c)
       write(STDOUT_FILENO, "\x1b[H" , 3);
       exit(0);
       break;
+    case 'w':
+    case 's':
+    case 'a':
+    case 'd':
+      editorMoveCursor(c);
+      break;
   }
 }
+
 
 
 
@@ -204,7 +231,21 @@ void editorDrawRows(struct abuf *ab)
   int i;
   for (i = 0; i < E.screenrows; i++)
   {
-    abAppend(ab ,"~",1);
+    if (i == E.screenrows /3 ){
+      char welcome[80];
+      int welcomelen = snprintf(welcome,sizeof(welcome),"Maho text editor -- version %s",MAHO_VERSION);
+      if (welcomelen > E.screencols) welcomelen = E.screencols;
+      int padding = (E.screencols - welcomelen) / 2;
+      if (padding){
+        abAppend(ab,"~",1);
+        padding--;
+      }
+      while (padding--) abAppend(ab," ",1);
+      abAppend(ab,welcome,welcomelen);
+    }else {
+      abAppend(ab ,"~",1);
+    }
+
   
     //Last line
     //K to erase the rest of the current line not all the screen
@@ -219,15 +260,21 @@ void editorDrawRows(struct abuf *ab)
 void editorRefreshscreen()
 {
   struct abuf ab = ABUF_INIT;
+  
   // The \x1b is the escape character
-  // The J command is to clear the screen, the 2 is to say clear the entire screen
   abAppend(&ab ,"\x1b[?25l",6);
   
-  // The H command for the cursor position
+  // Position cursor at top-left corner
   abAppend( &ab,"\x1b[H", 3);
+  //Draw rows
   editorDrawRows(&ab);
 
-  abAppend( &ab, " \x1b[H", 3);
+  //position the cursor at the current position
+  char buf[32];
+  snprintf(buf,sizeof(buf), "\x1b[%d;%dH",E.cy +1,E.cx +1);
+  abAppend(&ab,buf,strlen(buf));
+  
+  //show cursor
   abAppend(&ab,"\x1b[?25h",6);
 
   //write the buffer's contents out to standard output
@@ -243,6 +290,9 @@ void editorRefreshscreen()
 
 void initEditor()
 {
+  E.cx = 0;
+  E.cy = 0;
+
   if(getWindowSize(&E.screenrows, &E.screencols) == -1)
     die("getWindowSize");
 }
