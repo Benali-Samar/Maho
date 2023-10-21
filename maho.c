@@ -1,5 +1,9 @@
 /***** Includes *****/
 
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
 
 #include <stdio.h>
 #include <stdlib.h> 
@@ -9,6 +13,7 @@
 #include <errno.h>
 #include <sys/ioctl.h> // for the window size
 #include <string.h> 
+#include <sys/types.h>
 
 
 
@@ -23,12 +28,19 @@
 
 /***** Data *****/
 
+typedef struct erow {
+  int size;
+  char *chars;
+} erow;
+
 // For the terminal size rows 
 struct editorConfig {
   //for screen size ioctl request
   int cx,cy;
   int screenrows;
   int screencols;
+  int numrows;
+  erow row;
   struct termios orig_termios;
 };
 
@@ -199,7 +211,27 @@ int getWindowSize(int *rows, int *cols)
   }
 }
 
-
+/*** file i/o ***/
+void editorOpen(char *filename) {
+  FILE *fp = fopen(filename, "r");
+  if (!fp) die("fopen");
+  char *line = NULL;
+  size_t linecap = 0;
+  ssize_t linelen;
+  linelen = getline(&line, &linecap, fp);
+  if (linelen != -1) {
+    while (linelen > 0 && (line[linelen - 1] == '\n' ||
+                           line[linelen - 1] == '\r'))
+      linelen--;
+    E.row.size = linelen;
+    E.row.chars = malloc(linelen + 1);
+    memcpy(E.row.chars, line, linelen);
+    E.row.chars[linelen] = '\0';
+    E.numrows = 1;
+  }
+  free(line);
+  fclose(fp);
+}
 
 /***** Append buffer *****/ 
 
@@ -282,38 +314,40 @@ void editorProcessKeypress() {
 
 
 //Adding tilde like VIM did ^^ 
-void editorDrawRows(struct abuf *ab)
-{
-  int i;
-  for (i = 0; i < E.screenrows; i++)
-  {
-    if (i == E.screenrows /3 ){
-      char welcome[80];
-      int welcomelen = snprintf(welcome,sizeof(welcome),"Maho text editor -- version %s",MAHO_VERSION);
-      if (welcomelen > E.screencols) welcomelen = E.screencols;
-      int padding = (E.screencols - welcomelen) / 2;
-      if (padding){
-        abAppend(ab,"~",1);
-        padding--;
+void editorDrawRows(struct abuf *ab) {
+  int y;
+  for (y = 0; y < E.screenrows; y++) {
+    if (y >= E.numrows) {
+      if (E.numrows == 0 && y == E.screenrows / 3) {
+        char welcome[80];
+        int welcomelen = snprintf(welcome, sizeof(welcome),
+          "Maho editor -- version %s", MAHO_VERSION);
+        if (welcomelen > E.screencols) welcomelen = E.screencols;
+        int padding = (E.screencols - welcomelen) / 2;
+        if (padding) {
+          abAppend(ab, "~", 1);
+          padding--;
+        }
+        while (padding--) abAppend(ab, " ", 1);
+        abAppend(ab, welcome, welcomelen);
+      } else {
+        abAppend(ab, "~", 1);
       }
-      while (padding--) abAppend(ab," ",1);
-      abAppend(ab,welcome,welcomelen);
-    }else {
-      abAppend(ab ,"~",1);
+    } else {
+      int len = E.row.size;
+      if (len > E.screencols) len = E.screencols;
+      abAppend(ab, E.row.chars, len);
     }
-
-  
-    //Last line
-    //K to erase the rest of the current line not all the screen
-    abAppend(ab,"\x1b[k",3);
-    if(i <E.screenrows -1)
-      abAppend(ab,"\r\n",2);
+    abAppend(ab, "\x1b[K", 3);
+    if (y < E.screenrows - 1) {
+      abAppend(ab, "\r\n", 2);
+    }
   }
 }
 
 
 //clearing the screen
-void editorRefreshscreen()
+void editorRefreshScreen()
 {
   struct abuf ab = ABUF_INIT;
   
@@ -348,32 +382,23 @@ void initEditor()
 {
   E.cx = 0;
   E.cy = 0;
+  E.numrows = 0;
 
   if(getWindowSize(&E.screenrows, &E.screencols) == -1)
     die("getWindowSize");
 }
 
-int main ()
-{
-  // All the stuff did upside
+int main(int argc , char *argv[]) {
   enableRawMode();
   initEditor();
-  //Reading chars 
-  while(1) {
-  	char c = editorReadKey();
-    // does c a control character ?
-        if (iscntrl(c)) { 
-            // print it 
-            printf("%d\n", c);
-        } else {
-            // else to go back in a new line write the whole "\r\n"
-            printf("%d ('%c')\r\n", c, c);
-        }
-
-    //Process the characters	  
+  if (argc >= 2)
+  {
+    editorOpen(argv[1]);
+  }
+  
+  while (1) {
+    editorRefreshScreen();
     editorProcessKeypress();
-    //Flush the screen
-    editorRefreshscreen(); 
   }
   return 0;
 }
