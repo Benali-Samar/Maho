@@ -20,9 +20,11 @@ Using "termios" library as my main inspiration, i tried to built maho.
     [x] Recursive search
 
 ``
-*Maho's TO DO list*:
-``
 
+*Maho's TO DO list*:
+
+
+``
     [] Text color
 
     [] Synthaxe highlighting detection
