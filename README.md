@@ -6,6 +6,7 @@ Using "termios" library as my main inspiration, i tried to built maho.
 
 *Maho's features*:
 ``
+
     [x] Text viewer
 
     [x] Text editor
@@ -21,6 +22,7 @@ Using "termios" library as my main inspiration, i tried to built maho.
 ``
 *Maho's TO DO list*:
 ``
+
     [] Text color
 
     [] Synthaxe highlighting detection
