@@ -4,32 +4,29 @@ Maho is a simple text editor, simpler than nano :P for minimalistic people.
 
 Using "termios" library as my main inspiration, i tried to built maho.
 
-*Maho's features*:
+## Maho's features:
 
-    [x] Text viewer
+* Text viewer
 
-    [x] Text editor
+* Text editor
 
-    [x] Save after editing
+* Save after editing
 
-    [x] Save as
+* Save as
 
-    [x] Search in file
+* Search in file
 
-    [x] Recursive search
+* Recursive search
 
 
-*Maho's TO DO list*:
+## TODO:
 
-    [] Text color
+- [ ] Text color
 
-    [] Synthaxe highlighting detection
+- [ ] Synthaxe highlighting detection
 
-    [] Line numbers
+- [ ] Line numbers
 
-    [] Copy and paste
+- [ ] Copy and paste
 
-    [] Use "ncurses" library
-
-    [] ...
-
+- [ ] Use "ncurses" library
